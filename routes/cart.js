@@ -1,7 +1,7 @@
-// routes/cart.js
 const express = require("express");
 const router = express.Router();
 const Cart = require("../models/Cart");
+const { getIO } = require("../socket"); // ✅ Use centralized socket instance
 
 /**
  * 🛒 GET /api/cart/:userId
@@ -13,8 +13,8 @@ router.get("/:userId", async (req, res) => {
 
     // ✅ Populate both user info and products
     const cart = await Cart.findOne({ userId })
-      .populate("userId", "name email") // show user info
-      .populate("items.productId", "title price images"); // show product info
+      .populate("userId", "name email")
+      .populate("items.productId", "title price images");
 
     if (!cart) {
       return res.json({ userId, items: [] });
@@ -44,10 +44,10 @@ router.post("/:userId", async (req, res) => {
     let cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      // create new cart
+      // Create a new cart
       cart = await Cart.create({ userId, items });
     } else {
-      // update existing cart
+      // Update existing cart
       cart.items = items;
       await cart.save();
     }
@@ -57,13 +57,13 @@ router.post("/:userId", async (req, res) => {
       .populate("userId", "name email")
       .populate("items.productId", "title price images");
 
-    // ✅ Emit real-time socket update for the user
+    // ✅ Emit real-time cart update to the user
     try {
-      const { io } = require("../server");
+      const io = getIO();
       const count = (items || []).reduce((sum, i) => sum + (i.qty || 0), 0);
       io.to(userId).emit("cartCount", { userId, count });
     } catch (e) {
-      console.warn("Could not emit socket cartCount:", e.message);
+      console.warn("⚠️ Could not emit socket cartCount:", e.message);
     }
 
     res.json(cart);
@@ -76,7 +76,6 @@ router.post("/:userId", async (req, res) => {
 /**
  * 🧾 GET /api/cart
  * Get ALL carts (for admin dashboard)
- * Shows each user's email/name + product details
  */
 router.get("/", async (req, res) => {
   try {

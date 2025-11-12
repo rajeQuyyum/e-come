@@ -4,7 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const Message = require("../models/Message");
 const User = require("../models/User");
-const { io } = require("../server");
+const { getIO } = require("../socket"); // ✅ replaces require("../server")
 
 // 🖼️ Setup multer for image uploads
 const storage = multer.diskStorage({
@@ -74,7 +74,10 @@ router.post("/", upload.single("image"), async (req, res) => {
       seen: false,
     });
 
+    // ✅ Emit using getIO()
+    const io = getIO();
     io.to(room).emit("receiveMessage", message);
+
     res.json(message);
   } catch (err) {
     console.error("POST /messages error:", err);
@@ -89,7 +92,10 @@ router.put("/seen/:room", async (req, res) => {
   try {
     const { room } = req.params;
     await Message.updateMany({ room, seen: false }, { seen: true });
+
+    const io = getIO();
     io.to(room).emit("messagesSeen", room);
+
     res.json({ ok: true });
   } catch (err) {
     console.error("PUT /messages/seen error:", err);
@@ -136,8 +142,7 @@ router.delete("/remove-user/:userId", async (req, res) => {
   }
 });
 
-/* 🧹 DELETE /api/messages/clear/:room
-   Clears all messages in one chat room (keeps user account) */
+/* 🧹 DELETE /api/messages/clear/:room */
 router.delete("/clear/:room", async (req, res) => {
   try {
     const { room } = req.params;
@@ -154,8 +159,7 @@ router.delete("/clear/:room", async (req, res) => {
   }
 });
 
-/* ❌ DELETE /api/messages/delete-room/:room
-   Deletes all messages belonging to that chat room */
+/* ❌ DELETE /api/messages/delete-room/:room */
 router.delete("/delete-room/:room", async (req, res) => {
   try {
     const { room } = req.params;

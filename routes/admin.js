@@ -1,10 +1,10 @@
-// routes/admin.js
 const express = require("express");
 const router = express.Router();
 const Admin = require("../models/Admin");
 const User = require("../models/User");
 const Cart = require("../models/Cart");
 const Notification = require("../models/Notification");
+const { getIO } = require("../socket"); // ✅ Use centralized Socket.IO
 
 // ✅ ADMIN LOGIN
 router.post("/login", async (req, res) => {
@@ -81,9 +81,9 @@ router.delete("/users/:userId", checkAdmin, async (req, res) => {
     // 4️⃣ Delete all notifications targeted at this user
     await Notification.deleteMany({ target: userId });
 
-    // Optional socket broadcast to notify live admin panels
+    // ✅ Emit socket event (no circular dependency)
     try {
-      const { io } = require("../server");
+      const io = getIO();
       io.emit("userDeleted", { userId });
     } catch (e) {
       console.warn("Socket emission skipped:", e.message);
@@ -137,9 +137,9 @@ router.post("/notify", checkAdmin, async (req, res) => {
 
     const n = await Notification.create({ title, body, target });
 
-    // Optional socket broadcast
+    // ✅ Emit socket broadcast using getIO()
     try {
-      const { io } = require("../server");
+      const io = getIO();
       if (target === "all") io.emit("notification", n);
       else io.to(target).emit("notification", n);
     } catch (e) {
