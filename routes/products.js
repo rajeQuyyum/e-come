@@ -10,16 +10,29 @@ module.exports = function (upload) {
    */
   router.post("/", upload.array("images", 6), async (req, res) => {
     try {
-      const { title, description, price } = req.body;
+      const { title, description, price, stock } = req.body;
 
       if (!title || !price) {
         return res.status(400).json({ error: "Title and price are required" });
       }
 
-      // ✅ Cloudinary URLs instead of local paths
+      // Convert and validate stock
+      const stockNumber = Number(stock);
+      if (isNaN(stockNumber) || stockNumber < 0) {
+        return res.status(400).json({ error: "Stock must be a non-negative number" });
+      }
+
+      // Cloudinary URLs instead of local paths
       const images = (req.files || []).map((f) => f.path);
 
-      const product = await Product.create({ title, description, price, images });
+      // Create product
+      const product = await Product.create({
+        title,
+        description,
+        price,
+        stock: stockNumber,  // ⭐ validated stock stored here
+        images,
+      });
 
       res.json(product);
     } catch (err) {
