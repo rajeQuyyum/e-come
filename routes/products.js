@@ -6,7 +6,7 @@ module.exports = function (upload) {
 
   /**
    * 🖼️ POST /api/products
-   * Create a new product (supports image uploads)
+   * Create a new product (supports Cloudinary uploads)
    */
   router.post("/", upload.array("images", 6), async (req, res) => {
     try {
@@ -16,7 +16,9 @@ module.exports = function (upload) {
         return res.status(400).json({ error: "Title and price are required" });
       }
 
-      const images = (req.files || []).map((f) => `/uploads/${f.filename}`);
+      // ✅ Cloudinary URLs instead of local paths
+      const images = (req.files || []).map((f) => f.path);
+
       const product = await Product.create({ title, description, price, images });
 
       res.json(product);

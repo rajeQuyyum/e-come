@@ -62,13 +62,27 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ MULTER SETUP (for product uploads)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) =>
-    cb(null, Date.now() + "-" + file.originalname.replace(/\s+/g, "_")),
+// ✅ CLOUDINARY UPLOAD CONFIG
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+// configure cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
+});
+
+// ✅ CLOUDINARY STORAGE SETUP FOR MULTER
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "ecommerce_uploads", // all your uploads go here
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+  },
 });
 const upload = multer({ storage });
+
 
 // ✅ API ROUTES
 app.use("/api/admin", adminRoutes);
@@ -77,7 +91,7 @@ app.use("/api/products", productRoutes(upload));
 app.use("/api/users", userRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/notifications", notifRoutes);
-app.use("/api/messages", msgRoutes);
+app.use("/api/messages", msgRoutes(upload));
 app.use("/api/profile", profileRoutes);
 
 // ✅ SOCKET.IO HANDLERS
